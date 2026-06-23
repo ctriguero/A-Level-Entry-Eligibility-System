@@ -159,7 +159,7 @@ int main( int argc, const char* argv[] )
         //////////////////////////
         // HEADERS
         //////////////////////////
-        ALEVELCHOICES << "Name, Surname, choice, choice, choice, choice";
+        ALEVELCHOICES << "Name, Surname, choice, choice, choice, choice" << std::endl;
     
     
     
@@ -498,7 +498,7 @@ ALEVELCHOICES << surname << "," << name << "," ;
 
     if (std::find(Achoices.begin(), Achoices.end(), "Dr") != Achoices.end())
     {
-        if((PEAR == "6" || PEAR == "7" || PEAR == "8") && (ELIT == "B" || ELIT == "A" || ELIT == "A*"))
+        if((PEAR == "B" || PEAR == "A" || PEAR == "A*") && (ELIT == "B" || ELIT == "A" || ELIT == "A*"))
         {
             std::cout << BOLDGREEN << " YES Drama and Theatre Studies" << RESET << endl ;
 
@@ -556,18 +556,23 @@ ALEVELCHOICES << surname << "," << name << "," ;
         }
     }
 
-// //  A-LEVEL ENVIROMENTAL TECHNOLOGY (EV)  (DIGITAL OR INFORMATION TECHNOLOGY???)  ******check
-//     if (std::find(Achoices.begin(), Achoices.end(), "Ev") != Achoices.end())
-//     {
-//         if((MATH == "B" || MATH == "A" || MATH == "A*") || (TECH == "B" || TECH == "A" || TECH == "A*") || (PHYS == "B" || PHYS == "A" || PHYS == "A*"))
-//         {
-//             std::cout << BOLDGREEN << " YES Enviromental Technology" << RESET << endl ;
-//         }
-//         else
-//         {
-//             std::cout << BOLDRED << " NO Enviromental Technology" << RESET << endl ;
-//         }
-//     }
+//  A-LEVEL ENVIROMENTAL TECHNOLOGY (Ev)  (DIGITAL OR INFORMATION TECHNOLOGY???)  ******check
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ev") != Achoices.end())
+    {
+        if(MATH == "B" || MATH == "A" || MATH == "A*" || DTEC == "B" || DTEC == "A" || DTEC == "A*" || PHYS == "B" || PHYS == "A" || PHYS == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Enviromental Technology" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ev], ";
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Enviromental Technology" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ev], ";
+        }
+    }
 
 //  A-LEVEL FRENCH (FR)  
     if (std::find(Achoices.begin(), Achoices.end(), "Fr") != Achoices.end())
@@ -621,6 +626,7 @@ ALEVELCHOICES << surname << "," << name << "," ;
     }
 
 //  A-LEVEL GOVERMENT AND POLITICS (Po)  
+
     if (std::find(Achoices.begin(), Achoices.end(), "Po") != Achoices.end())
     {
         if(POLI == "B" || POLI == "A" || POLI == "A*" || POLI == "A*" || ELAN == "B" || ELAN == "A" || ELAN == "A*" || HIST == "B" || HIST == "A" || HIST == "A*")
@@ -638,6 +644,7 @@ ALEVELCHOICES << surname << "," << name << "," ;
     }
 
 //  A-LEVEL HEALTH AND SOCIAL CARE (Hs)  
+
     if (std::find(Achoices.begin(), Achoices.end(), "Hs") != Achoices.end())
     {
         if(PESE == "B" || PESE == "A" || PESE == "A*" || ELAN == "B" || ELAN == "A" || ELAN == "A*")
@@ -655,6 +662,7 @@ ALEVELCHOICES << surname << "," << name << "," ;
     }
 
 //  A-LEVEL HISTORY (Hi)  
+
     if (std::find(Achoices.begin(), Achoices.end(), "Hi") != Achoices.end())
     {
         if(HIST == "B" || HIST == "A" || HIST == "A*" || ELIT == "A" || ELIT == "A*" || ELAN == "A" || ELAN == "A*")
@@ -674,7 +682,7 @@ ALEVELCHOICES << surname << "," << name << "," ;
 //  A-LEVEL LATIN (La)        ***********************CHECK MAX NUMERICAL VALUE
     if (std::find(Achoices.begin(), Achoices.end(), "La") != Achoices.end())
     {
-        if(LATI == "6" || LATI == "7" || LATI == "8")
+        if(LATI == "B" || LATI == "A" || LATI == "A*")
         {
             std::cout << BOLDGREEN << " YES Latin" << RESET << endl ;
 
@@ -746,10 +754,14 @@ ALEVELCHOICES << surname << "," << name << "," ;
         if(FMAT == "A*" && MATH == "A*")
         {
             std::cout << BOLDGREEN << " YES Further Mathematics" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Fm], ";
         }
         else
         {
             std::cout << BOLDRED << " NO Further Mathematics" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Fm], ";
         }
     }
 
@@ -887,8 +899,9 @@ ALEVELCHOICES << surname << "," << name << "," ;
 //  A-LEVEL RUSSIAN (Ru)               ******************NUMBER POSIBILITIES
 
     if (std::find(Achoices.begin(), Achoices.end(), "Ru") != Achoices.end())
-    {                                                           
-        if(RUSS == "6" || RUSS == "7") 
+    {           
+        // Minimum 6 which is a B !                                                
+        if(RUSS == "B" || RUSS == "A" || RUSS == "A*") 
         {
             std::cout << BOLDGREEN << " YES Russian" << RESET << endl ;
 
@@ -978,7 +991,8 @@ ALEVELCHOICES << surname << "," << name << "," ;
 
 } // While reading line finish here
 
-        InputFile.close() ;
+InputFile.close() ;
 
-    return (0) ;
+return (0) ;
+
 }
