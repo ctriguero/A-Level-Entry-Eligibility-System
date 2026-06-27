@@ -1,0 +1,1412 @@
+// A-Level Entry Eligibility System - ALEES
+
+// The aim of this program is to process student GCSE results and A-level subject choices, 
+// then apply predefined entry criteria (MCB elegibility rules) to determine whether each student is 
+// eligible to study their selected A-level subjects. The system reads data from a structured 
+// input file, evaluates subject-specific requirements, and outputs clear decisions indicating 
+// whether each choice is approved or rejected. It is designed to support consistent and 
+// efficient academic progression decisions based on attainment data.
+
+// classes example
+#include <iostream>
+#include <fstream>
+#include <stdlib.h>
+#include <stdio.h>
+#include <vector>
+#include <ctime>
+#include <unistd.h>
+#include <cstdlib>
+#include <sstream>
+#include <cmath>
+#include <ctime>
+#include <algorithm> // use abs() needed for sort
+#include <random>
+#include <string>
+//#include <string> //
+//#include<math.h> // use sqrt()
+
+
+// COLORS FOR SCREEN OUTPUT
+#define RESET   "\033[0m"
+#define BLACK   "\033[30m"      /* Black */
+#define RED     "\033[31m"      /* Red */
+#define GREEN   "\033[32m"      /* Green */
+#define YELLOW  "\033[33m"      /* Yellow */
+#define BLUE    "\033[34m"      /* Blue */
+#define MAGENTA "\033[35m"      /* Magenta */
+#define CYAN    "\033[36m"      /* Cyan */
+#define WHITE   "\033[37m"      /* White */
+#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
+#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
+#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
+#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
+#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
+#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
+#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
+#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+
+using namespace std;
+
+
+// USED FOR GENERAL ENTRY TO ALEVEL PATHWAY 1
+int gradeValue(const std::string& g)
+{
+    if (g == "A*") return 9;
+    if (g == "A")  return 8;
+    if (g == "B")  return 7;
+    if (g == "C*") return 6;
+    if (g == "C")  return 5;
+    return 0;
+}
+
+// USED FOR GENERAL ENTRY TO ALEVEL PATHWAY 2
+int gradePoints(const std::string& g)
+{
+    if (g == "A*") return 4;
+    if (g == "A")  return 3;
+    if (g == "B")  return 2;
+    if (g == "C*") return 1;   // OR 1.5 (see note below)
+    if (g == "C")  return 1;
+    return 0;
+}
+
+
+//**********************************************************************************
+// main function
+//**********************************************************************************
+int main( int argc, const char* argv[] )
+{
+    std::cout << endl ;
+    std::cout << BOLDYELLOW << "    ______________________________________________________________" << std::endl ;
+    std::cout << BOLDYELLOW << "            _=_                                      " << RESET << std::endl ;
+    std::cout << BOLDYELLOW << "          q(-_-)p                                    " << RESET << std::endl ;
+    std::cout << BOLDYELLOW << "          '_) (_`         A-Level Entry Eligibility System - ALEES        " << RESET << std::endl ;
+    std::cout << BOLDYELLOW << "          /__/  \\         Carles Triguero 2026      " << RESET << std::endl ;
+    std::cout << BOLDYELLOW << "        _(<_   / )_                                  " << RESET << std::endl ;
+    std::cout << BOLDYELLOW << "       (__\\_\\_|_/__)                               " << RESET << std::endl ;
+    std::cout << BOLDYELLOW << "    ______________________________________________________________" << RESET << std::endl ;
+    std::cout << endl ;
+    
+    
+    
+    
+    // Check the number of arguments (1 means only the name of the program => No argument)
+    if ( argc == 1 )
+    {
+        cout << "\t Wrong usage. You should execute:" << endl ;
+        cout << BOLDRED << "\t " << argv[0] << " [File to analyze.dat]" << RESET << endl ;
+        cout << " " << endl ;
+        return (0) ;
+    }
+    
+    // Check if the file exists
+    ifstream file(argv[1]) ;
+    if (!file)
+    {
+        std::cout << BOLDRED <<"    -> ERROR: File test.xyz does not exist. ABORTING" << RESET << std::endl ;
+        std::cout << std::endl ;
+        abort () ;
+    }
+    file.close() ;
+    
+    std::cout << YELLOW << "    -> File " << BOLDYELLOW << argv[1] << RESET << YELLOW << " found" << RESET << std::endl ;
+    
+    unsigned int bins = 100 ;        // Number of bins default
+    
+    for ( int k = 1; k < argc ; ++k )
+    {
+        if ( ( argv[k] == std::string("-h") ) || ( argv[k] == std::string("-HELP") ) || ( argv[k] == std::string("-H") ) || ( argv[k] == std::string("-help") ) )
+        {
+            cout  << BOLDBLACK << "    HELP:" << RESET << std::endl ;
+            cout << "    Generates a histogram with the second column of a file containing real data" << std::endl ;
+            cout << "    [Column can be changed and also addapted to integer data]" << std::endl ;
+            cout << "    ------------------------------------------------" << std::endl ;
+            cout << BOLDBLACK << "    Execution: ./a.out file.dat [+flags]" << RESET << std::endl ;
+            cout << BOLDBLACK << "    Mandatory flags:" << RESET << std::endl ;
+            cout << "    -bins" << "\t" << "    to set the number of bins (e.g. ./a.out file.dat -bins 100) default bins=100" << std::endl ;
+            cout << BOLDBLACK << "    Optional flags:" << RESET << std::endl ;
+            cout << "    -h" << "\t" << "    to get help  (e.g. ./a.out -help)" << std::endl ;
+            cout << "    -gle" << "\t" << "    to generate gle graphs of histogram and PDF  (e.g. ./a.out file.dat -bins 100 -gle)" << std::endl ;
+            cout << std::endl ;
+            return (0) ;
+        }
+        if ( ( argv[k] == std::string("-bins") ) || ( argv[k] == std::string("-bin") )  || ( argv[k] == std::string("-b") ) ) { bins = atoi(argv[k+1]) ; }
+            //        if ( ( argv[k] == std::string("-gle") ) || ( argv[k] == std::string("-g") )  || ( argv[k] == std::string("-GLE") ) ) { Ly = atoi(argv[k+1]) ; }
+    }
+    
+    
+    ///////////////////////////////
+    // START FILES TO SAVE DATA
+    ///////////////////////////////
+
+    ofstream NOTELEGIBLE ;
+    NOTELEGIBLE.open ("ALEVEL_NOT_ELEGIBLE.csv", ios::out | ios::trunc);
+        
+    ofstream ALEVELCHOICES ;
+    ALEVELCHOICES.open ("A_CHOICES.csv", ios::out | ios::trunc); 
+        
+    ofstream ACTIONS ;
+    ACTIONS.open ("ACTIONS.csv", ios::out | ios::trunc);
+
+    ofstream HTMLOUT ;
+    HTMLOUT.open ("A_CHOICES.html", ios::out | ios::trunc);
+
+    ofstream NUMBERPUPILS ;
+    NUMBERPUPILS.open ("Provisional_numbers.dat", ios::out | ios::trunc);
+            
+    ///////////////////////////////
+    // END BLOCK FILES TO SAVE DATA
+    ///////////////////////////////
+    
+
+
+    //////////////////////////
+    // HEADER FOR ALEVEL CHOICES
+    //////////////////////////
+    ALEVELCHOICES << "Name, Surname, choice, choice, choice, choice" << std::endl;
+    
+    //////////////////////////
+    // HEADER FOR HTML OUT
+    //////////////////////////
+    HTMLOUT << "<!DOCTYPE html>" << std::endl;
+    HTMLOUT << "<html>" << std::endl;
+    HTMLOUT << "<!DOCTYPE html>" << std::endl;
+    HTMLOUT << "<head>" << std::endl;
+    HTMLOUT << "<meta charset=\"UTF-8\">" << std::endl;
+    HTMLOUT << "<title>A-Level Choices</title>" << std::endl;
+    HTMLOUT << "</head>" << std::endl;
+    HTMLOUT << "<body>" << std::endl;
+    HTMLOUT << "<h2>A-Level Entry Eligibility</h2>" << std::endl;
+
+
+
+//  HTMLOUT <<   "<script src=\"https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js\"></script>" << std::endl;
+
+//     HTMLOUT << "<style>"<< std::endl;
+//       HTMLOUT <<  "button {"<< std::endl;
+//         HTMLOUT <<    "padding: 10px 16px;"<< std::endl;
+//        HTMLOUT <<     "font-size: 14px;"<< std::endl;
+//        HTMLOUT <<     "cursor: pointer;" << std::endl;
+//         HTMLOUT <<    "background-color:#007BFF;" << std::endl;
+//          HTMLOUT <<   "color: white;" << std::endl;
+//          HTMLOUT <<   "border: none;" << std::endl;
+//          HTMLOUT <<   "border-radius: 6px;"<< std::endl;
+//        HTMLOUT << "}"<< std::endl;
+
+    HTMLOUT << "<table border=\"1\" cellspacing=\"0\" cellpadding=\"8\" style=\"border-collapse:collapse; font-family:Arial;\">" << std::endl;
+    HTMLOUT << "<tr>" << std::endl;
+    HTMLOUT << "    <th style=\"background-color:#9BDCFA;\"><b>Surname</b></th>" << std::endl;
+    HTMLOUT << "    <th style=\"background-color:#9BDCFA;\"><b>Name</b></th>" << std::endl;
+    HTMLOUT << "    <th style=\"background-color:#9BDCFA;\"><b>Choice</b></th>" << std::endl;
+    HTMLOUT << "    <th style=\"background-color:#9BDCFA;\"><b>Choice</b></th>" << std::endl;
+    HTMLOUT << "    <th style=\"background-color:#9BDCFA;\"><b>Choice</b></th>" << std::endl;
+    HTMLOUT << "    <th style=\"background-color:#9BDCFA;\"><b>Choice</b></th>" << std::endl;
+    HTMLOUT << "</tr>" << std::endl;
+    
+    // Input file definition
+    std::string File(argv[1]); // set up a stringstream variable named convert, initialized with the input from argv[1]
+    
+    
+    cout << YELLOW << "    -> Processing file: " << BOLDYELLOW << File << RESET << endl ;
+    
+    
+    // Data file input to read
+    std::ifstream InputFile(File);
+
+
+    // GCSE GRADES input variables data     
+    std::string surname,name,year,reg,candidate,entries,ARTD,BIOL,BUSI,CHEM,CHIN,CCIV,DTEC,ECON,ELAN,ELIT,FREN,GEOG,GERM,HIST,HOEC,ITEC,ITAR,LATI,MATH,FMAT,MUSI,PEAR,PESE,PHYS,POLI,RELI,RUSS,SPAN,SPOR;
+    
+    // Variable string to read the whole line
+    std::string line ;            
+
+    // // Skiping very first line
+    // getline(InputFile, line);
+
+
+
+
+
+    // COUNTS THE NUMBER OF ALEVEL PUPILS IN EACH CLASS:
+    // Art and Design
+    int pupils_Ar=0;
+    int pupils_Bi=0;
+    int pupils_Bs=0;
+    int pupils_Ch=0;
+    int pupils_Cl=0;
+    int pupils_Cp=0;
+    int pupils_Dt=0;
+    int pupils_Dr=0;
+    int pupils_Ec=0;
+    int pupils_Et=0;
+    int pupils_Ev=0;
+    int pupils_Fr=0;
+    int pupils_Gg=0;
+    int pupils_Gr=0;
+    int pupils_Po=0;
+    int pupils_Hs=0;
+    int pupils_Hi=0;
+    int pupils_La=0;
+    int pupils_Ma=0;
+    int pupils_Fm=0;
+    int pupils_Mv=0;
+    int pupils_Mu=0;
+    int pupils_Nf=0;
+    int pupils_Ph=0;
+    int pupils_Ps=0;
+    int pupils_Re=0;
+    int pupils_Ru=0;
+    int pupils_Sp=0;
+    int pupils_Pe=0;
+    int pupils_Tl=0;
+    int pupils_Tt=0;
+
+
+
+
+
+// READING DATA FOR EACH PUPIL GCSE GRADES AND A-LEVEL CHOICES
+    
+while (getline(InputFile, line))
+{
+std::stringstream aa(line);
+
+// FIXED FIELDS (TSV-safe parsing)
+std::string surname, name, year, reg, candidate, entries;
+
+std::getline(aa, surname, '\t');
+std::getline(aa, name, '\t');
+std::getline(aa, year, '\t');
+std::getline(aa, reg, '\t');
+std::getline(aa, candidate, '\t');
+std::getline(aa, entries, '\t');
+
+// GCSE SUBJECT GRADES (ALL TSV-SAFE)
+std::string ARTD, BIOL, BUSI, CHEM, CHIN, CCIV, DTEC, ECON, ELAN,
+            ELIT, FREN, GEOG, GERM, HIST, HOEC, ITEC, ITAR,
+            LATI, MATH, FMAT, MUSI, PEAR, PESE, PHYS, POLI,
+            RELI, RUSS, SPAN, SPOR;
+
+std::getline(aa, ARTD, '\t'); // Art & Desigb
+std::getline(aa, BIOL, '\t'); // Biology
+std::getline(aa, BUSI, '\t'); // Business Studies
+std::getline(aa, CHEM, '\t'); // Chemistry
+std::getline(aa, CHIN, '\t'); // Chinese
+std::getline(aa, CCIV, '\t'); // Classical Civilization
+std::getline(aa, DTEC, '\t'); // Digital Technology
+std::getline(aa, ECON, '\t'); // Economics
+std::getline(aa, ELAN, '\t'); // English Languaje
+std::getline(aa, ELIT, '\t'); // English Literature
+std::getline(aa, FREN, '\t'); // French
+std::getline(aa, GEOG, '\t'); // Geography
+std::getline(aa, GERM, '\t'); // German
+std::getline(aa, HIST, '\t'); // History
+std::getline(aa, HOEC, '\t'); // Home Economics/Food and Nutrition?
+std::getline(aa, ITEC, '\t'); // Information Technology
+std::getline(aa, ITAR, '\t'); // IT/Art
+std::getline(aa, LATI, '\t'); // Latin
+std::getline(aa, MATH, '\t'); // Mathematics
+std::getline(aa, FMAT, '\t'); // Further Mathematics
+std::getline(aa, MUSI, '\t'); // Music
+std::getline(aa, PEAR, '\t'); // Performing Arts/Drama
+std::getline(aa, PESE, '\t'); // Personal and Social Education
+std::getline(aa, PHYS, '\t'); // Physics
+std::getline(aa, POLI, '\t'); // Politics
+std::getline(aa, RELI, '\t'); // Religious Studies
+std::getline(aa, RUSS, '\t'); // Russian
+std::getline(aa, SPAN, '\t'); // Spanish
+std::getline(aa, SPOR, '\t'); // Sport/PE Studies
+
+
+
+
+// A-LEVEL CHOICES READ INTO ACHOICES VECTOR ONLY NON EMPTY ENTRIES
+std::vector<std::string> Achoices;
+std::string choice;
+
+while (std::getline(aa, choice, '\t'))
+{
+    if (!choice.empty())
+        Achoices.push_back(choice);
+}
+
+// Check number of choices:
+// std::size_t numChoices = Achoices.size();
+// Output info:
+std::cout << name << " " << surname << " number of choices is: " << Achoices.size() << " choices are: " ;
+for (const auto& choice : Achoices)
+{
+    std::cout << choice << " " ;
+}
+std::cout << std::endl;
+
+
+
+
+
+
+
+//////////////////////////////////////////////
+// START ELEGIBILITY FOR A LEVEL IN GENERAL:
+//////////////////////////////////////////////
+
+// PATHWAY 1
+
+std::vector<std::string> gcses = {
+    ARTD, BIOL, BUSI, CHEM, CHIN, CCIV, DTEC, ECON,
+    ELAN, ELIT, FREN, GEOG, GERM, HIST, HOEC, ITEC,
+    ITAR, LATI, MATH, FMAT, MUSI, PEAR, PESE, PHYS,
+    POLI, RELI, RUSS, SPAN, SPOR
+};
+
+int countCplus = 0;
+int countBplus = 0;
+
+for (const auto& g : gcses)
+{
+    int val = gradeValue(g);
+
+    if (val >= 5) countCplus++;  // C or above count
+    if (val >= 7) countBplus++;  // B or above count
+}
+
+bool englishOK = (gradeValue(ELAN) >= 5); // Extra condition on English Language
+bool mathsOK   = (gradeValue(MATH) >= 5); // Extra condition on Mathematics
+
+bool pathway1 = (countCplus >= 6) && (countBplus >= 3) && englishOK && mathsOK ;
+
+if (pathway1)
+{
+    std::cout << BOLDYELLOW << surname << " " << name << BOLDGREEN << " -> Pathway 1: ELIGIBLE" << RESET; // << std::endl;
+}
+else
+{
+    std::cout << BOLDYELLOW << surname << " " << name << BOLDRED << " -> Pathway 1: NOT ELIGIBLE" << RESET;// << std::endl;
+
+    NOTELEGIBLE << surname << "," << name << ",pathway 1,NOT ELIGIBLE";
+}
+
+// PATHWAY 2
+
+double totalPoints = 0;
+
+for (const auto& g : gcses)
+{
+    totalPoints += gradePoints(g);
+}
+
+bool pathway2 = (totalPoints >= 12) && (gradeValue(ELAN) >= 5) && (gradeValue(MATH) >= 5);
+
+if (pathway2)
+{
+    std::cout << BOLDGREEN
+              << " -> Pathway 2: ELIGIBLE (" << totalPoints << " GCSE points)" << RESET << std::endl;
+}
+else
+{
+    std::cout << BOLDRED 
+              << " -> Pathway 2: NOT ELIGIBLE (" << totalPoints << " GCSE points)" << RESET << std::endl;
+
+    NOTELEGIBLE << ",pathway 2,NOT ELIGIBLE," << totalPoints << " GCSE points," << gradeValue(ELAN) << ", EngLan," << gradeValue(MATH)  << ",Math" <<  std::endl;
+}
+
+// END ELEGIBILITY FOR A LEVEL IN GENERAL:
+
+
+
+
+ALEVELCHOICES << surname << "," << name << "," ;
+
+
+
+// HTML TABLE SIDE NAMES:
+HTMLOUT << "<tr>" << std::endl;
+HTMLOUT << "<td style=\"background-color:#9BDCFA;\">" << surname << "</td>" << std::endl;
+HTMLOUT << "<td style=\"background-color:#9BDCFA;\">" << name << "</td>" << std::endl;
+
+
+
+
+
+
+
+
+
+
+
+//  A-LEVEL ART AND DESIGN (Ar)
+
+// Checks if CARTD is in the choices (Achoices vector)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ar") != Achoices.end())
+    {
+        // Check if: grade is B or higher for Art and Design AND for English Languaje
+        if((ARTD == "B" || ARTD == "A" || ARTD == "A*") && (ELAN == "B" || ELAN == "A" || ELAN == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Art and Design" << RESET << " Art des =" << ARTD << " Eng lan=" << ELAN << endl ;
+
+            ALEVELCHOICES << "[YES Ar], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Art and Design</strong></td>" << std::endl;
+
+            pupils_Ar++;
+        
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Art and Design" << RESET << " Art des =" << ARTD << " Eng lan=" << ELAN << endl ;
+
+            ALEVELCHOICES << "[NO Ar], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Art and Design</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Art and Design" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL BIOLOGY (Bi)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Bi") != Achoices.end())
+    {
+        if(BIOL == "A" || BIOL == "A*" || BIOL == "AA" || BIOL == "A*A" || BIOL == "AA*" || BIOL == "A*A*")
+        {
+            std::cout << BOLDGREEN << " YES Biology" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Bi], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Biology</strong></td>" << std::endl;
+
+            pupils_Bi++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Biology" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Bi], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Biology</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Biology" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL BUSINESS STUDIES (Bs)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Bs") != Achoices.end())
+    {
+        if( BUSI == "B" || BUSI == "A" || BUSI == "A*" || ((BUSI == "C*" || BUSI == "B" || BUSI == "A" || BUSI == "A*") && ELAN == "B") )
+         {
+            std::cout << BOLDGREEN << " YES Busines Studies" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Bs], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Business Studies</strong></td>" << std::endl;
+
+            pupils_Bs++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Busines Studies" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Bs], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Business Studies</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Business Studies" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+
+//  A-LEVEL CHEMISTRY (Ch)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ch") != Achoices.end())
+    {
+        if((CHEM == "A" || CHEM == "A*") && (MATH == "A" || MATH == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Chemistry" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ch], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Chemistry</strong></td>" << std::endl;
+
+            pupils_Ch++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Chemistry" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ch], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Chemistry</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Chemistry" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+
+//  A LEVEL CLASSICAL CIVILIZATION (Cl)  (!CCIV.empty()) checks that any value non empty is sufficient to acces A level.
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Cl") != Achoices.end())
+    {
+        // Classical Civilization GCSE is not an entry requirement as this year did not have enough pupils but may change in future
+        if((HIST == "B" || HIST == "A" || HIST == "A*") || (ELAN == "B" || ELAN == "A" || ELAN == "A*") || (ELIT == "B" || ELIT == "A" || ELIT == "A*") || (LATI == "B" || LATI == "A" || LATI == "A*")  || (RELI == "B" || RELI == "A" || RELI == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Classical Civilization" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Cl], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Classical Civilization</strong></td>" << std::endl;
+
+            pupils_Cl++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Classical Civilization" << RESET << endl ;
+
+            ALEVELCHOICES << "[No Cl], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Classical Civilization</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Classical Civilization" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+// // THIS COULD BE IMPLEMENTED AS:
+// // bool goodGrade(const std::string& g)
+// // {
+// //     return g == "A" || g == "A*" || g == "B";
+// // }
+// // if (!CCIV.empty() || BGrade(HIST) || BGrade(ELAN) || BGrade(ELIT) || BGrade(LATI) || BGrade(RELI))
+
+
+
+//  A-LEVEL COMPUTER SCIENCE (Cp) no AQE CONSIDERED 2 CONDITION HERE!!!
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Cp") != Achoices.end())
+    {
+        if((DTEC == "A" || DTEC == "A*") && (MATH == "B" || MATH == "A" || MATH == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Computer Science" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Cp], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Computer Science</strong></td>" << std::endl;
+
+            pupils_Cp++;
+        }
+        else if(MATH == "A" || MATH == "A*")
+        {
+            std::cout << BOLDGREEN << " (If HOD approval on acceptable level of programming ability. A in maths already confirmed.) YES Computer Science" << RESET << endl ;
+
+            ALEVELCHOICES << "**[YES IF HOD Cp]**, ";
+
+            HTMLOUT << "<td style=\"background-color:#D17A00;color:black\"><strong>PENDING Computer Science (HOD)</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", PENDING Computer Science" << "," << " CONTACT HOD, If HOD approval on acceptable level of programming ability. A in maths already confirmed." << endl;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Computer Science" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Cp], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Computer Science</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Computer Science" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL DIGITAL TECHNOLOGY (Dt)  gcse compUTER science NOT CONSIERED CHECK
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Dt") != Achoices.end())
+    {
+        if((DTEC == "C*" || DTEC == "B" || DTEC == "A" || DTEC == "A*") || (ELAN == "B" || ELAN == "A" || ELAN == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Digital Technology" << RESET << endl ;
+            
+            ALEVELCHOICES << "[YES Dt], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Digital Technology</strong></td>" << std::endl;
+
+            pupils_Dt++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Digital Technology" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Dt], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Digital Technology</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Digital Technology" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL DRAMA AND THEATRE STUDIES (Dr)  IS DRAMA GCSE PERFORMIN ARTS PEAR 6 to what number???
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Dr") != Achoices.end())
+    {
+        if((PEAR == "B" || PEAR == "A" || PEAR == "A*") && (ELIT == "B" || ELIT == "A" || ELIT == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Drama and Theatre Studies" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Dr], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Drama</strong></td>" << std::endl;
+
+            pupils_Dr++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Drama and Theatre Studies" << RESET << endl ;
+
+            ALEVELCHOICES << "[No Dr], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Drama</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Drama" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL ECONOMICS (Ec)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ec") != Achoices.end())
+    {
+        if((ECON == "B" || ECON == "A" || ECON == "A*") || ((ELAN == "B" || ELAN == "A" || ELAN == "A*") && (MATH == "B" || MATH == "A" || MATH == "A*")))
+        {
+            std::cout << BOLDGREEN << " YES Economics" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ec], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Economics</strong></td>" << std::endl;
+
+            pupils_Ec++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Economics" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ec], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Economics</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Economics" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL ENGLISH LITERATURE (Et)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Et") != Achoices.end())
+    {
+        if ((ELIT == "A" || ELIT == "A*") && (ELAN == "B" || ELAN == "A" || ELAN == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES English Literature" << RESET << std::endl;
+
+            ALEVELCHOICES << "[YES Et], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES English Literature</strong></td>" << std::endl;
+
+            pupils_Et++;
+        }
+        else if ((ELAN == "A" || ELAN == "A*") && (ELIT == "B" || ELIT == "A" || ELIT == "A*"))
+        {
+            std::cout << BOLDGREEN << " (If HOD approval. English Languaje A, and English Literature B checked.) YES English Literature" << RESET << std::endl;
+
+            ALEVELCHOICES << "**[YES IF HOD Et]**, ";
+
+            HTMLOUT << "<td style=\"background-color:#D17A00;color:black\"><strong>PENDING English Literature (HOD)</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", PENDING English Literature" << "," << " CONTACT HOD, If HOD approval. English Languaje A, and English Literature B confirmed." << endl;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO English Literature" << RESET << std::endl;
+
+            ALEVELCHOICES << "[NO Et], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO English Literature</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Engish Literature" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL ENVIROMENTAL TECHNOLOGY (Ev)  (DIGITAL OR INFORMATION TECHNOLOGY???)  ******check
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ev") != Achoices.end())
+    {
+        if(MATH == "B" || MATH == "A" || MATH == "A*" || DTEC == "B" || DTEC == "A" || DTEC == "A*" || PHYS == "B" || PHYS == "A" || PHYS == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Enviromental Technology" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ev], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Enviromental Technology</strong></td>" << std::endl;
+
+            pupils_Ev++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Enviromental Technology" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ev], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Enviromental Technology</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Enviromental Technology" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL FRENCH (Fr)  
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Fr") != Achoices.end())
+    {
+        if(FREN == "B" || FREN == "A" || FREN == "A*")
+        {
+            std::cout << BOLDGREEN << " YES French" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Fr], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES French</strong></td>" << std::endl;
+
+            pupils_Fr++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO French" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Fr], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO French</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO French" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL GEOGRAPHY (Gg)  
+    if (std::find(Achoices.begin(), Achoices.end(), "Gg") != Achoices.end())
+    {
+        if((GEOG == "B" || GEOG == "A" || GEOG == "A*") || ((ELAN == "B" || ELAN == "A" || ELAN == "A*") && (MATH == "B" || MATH == "A" || MATH == "A*")))
+        {
+            std::cout << BOLDGREEN << " YES Geography" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Gg], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Geography</strong></td>" << std::endl;
+
+            pupils_Gg++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Geography" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Gg], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Geography</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Geography" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL GERMAN (Gr) 
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Gr") != Achoices.end())
+    {
+        if(GERM == "B" || GERM == "A" || GERM == "A*")
+        {
+            std::cout << BOLDGREEN << " YES German" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Gr], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES German</strong></td>" << std::endl;
+
+            pupils_Gr++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO German" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Gr], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO German</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO German" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL GOVERMENT AND POLITICS (Po)  
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Po") != Achoices.end())
+    {
+        if(POLI == "B" || POLI == "A" || POLI == "A*" || POLI == "A*" || ELAN == "B" || ELAN == "A" || ELAN == "A*" || HIST == "B" || HIST == "A" || HIST == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Goverment and Politics" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Po], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Goverment and Politics</strong></td>" << std::endl;
+
+            pupils_Po++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Goverment and Politics" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Po], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Goverment and Politics</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Goverment and Politics" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL HEALTH AND SOCIAL CARE (Hs)  
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Hs") != Achoices.end())
+    {
+        if(PESE == "B" || PESE == "A" || PESE == "A*" || ELAN == "B" || ELAN == "A" || ELAN == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Health and Social Care" << RESET << endl ;
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Health and Social Care</strong></td>" << std::endl;
+
+            ALEVELCHOICES << "[YES Hs], ";
+
+            pupils_Hs++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Health and Social Care" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Hs], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Health and Social Care</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Health and Social Care" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL HISTORY (Hi)  
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Hi") != Achoices.end())
+    {
+        if(HIST == "B" || HIST == "A" || HIST == "A*" || ELIT == "A" || ELIT == "A*" || ELAN == "A" || ELAN == "A*")
+        {
+            std::cout << BOLDGREEN << " YES History" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Hi], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES History</strong></td>" << std::endl;
+
+            pupils_Hi++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO History" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Hi], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO History</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO History" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL LATIN (La) ***** Condition in numerical values 6 -> B
+    if (std::find(Achoices.begin(), Achoices.end(), "La") != Achoices.end())
+    {
+        if(LATI == "B" || LATI == "A" || LATI == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Latin" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES La], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Latin</strong></td>" << std::endl;
+
+            pupils_La++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Latin" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO La], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Latin</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Latin" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL MATHEMATICS (Ma)  ************CHECK DIFFERENCE BETWEEN ROUTE 1 and 2???
+
+    if (std::find(Achoices.begin(), Achoices.end(), "M2") != Achoices.end())
+    {
+        // Route 1                                                               
+        if((MATH == "A" || MATH == "A*") && (FMAT == "B" || FMAT == "A" || FMAT == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Mathematics ROUTE 1" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ma 1], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Mathematics Route 1</strong></td>" << std::endl;
+
+            pupils_Ma++;
+        }
+        else if(MATH == "A" || MATH == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Mathematics using ROUTE 2" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ma 2], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Mathematics Route 2</strong></td>" << std::endl;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Mathematics" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ma], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Mathematics</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Mathematics" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+
+//  A-LEVEL MATHEMATICS (Ma)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ma") != Achoices.end())
+    {
+        // Route 1                                                               
+        if((MATH == "A" || MATH == "A*") && (FMAT == "B" || FMAT == "A" || FMAT == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Mathematics ROUTE 1" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ma 1], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Mathematics Route 1</strong></td>" << std::endl;
+
+            pupils_Ma++;
+        }
+        else if(MATH == "A" || MATH == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Mathematics using ROUTE 2" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ma 2], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Mathematics Route 2</strong></td>" << std::endl;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Mathematics" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ma], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Mathematics</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Mathematics" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL FURTHER MATHEMATICS (Fm)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Fm") != Achoices.end())
+    {                                                           
+        if(FMAT == "A*" && MATH == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Further Mathematics" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Fm], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Further Mathematics</strong></td>" << std::endl;
+
+            pupils_Fm++;
+
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Further Mathematics" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Fm], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Further Mathematics</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Further Mathematics" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+
+//  A-LEVEL MOVING IMAGE ART (Mv)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Mv") != Achoices.end())
+    {                                                     
+        if(ITAR == "B" || ITAR == "A" || ITAR == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Moving Image Arts" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Fm], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Moving Image Arts</strong></td>" << std::endl;
+
+            pupils_Mv++;
+
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Moving Image Arts" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Fm], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Moving Image Arts</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Moving Image Arts" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL MUSIC (Mu)             *********************CHECK AND GRADE 5 IN INSTRUMENT OR VOICE
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Mu") != Achoices.end())
+    {                                                              
+        if(MUSI == "B" || MUSI == "A" || MUSI == "A*") // AND GRADE 5
+        {
+            std::cout << BOLDGREEN << " YES Music" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Mu], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Music</strong></td>" << std::endl;
+
+            pupils_Mu++;
+
+        }
+        else
+        {
+            std::cout << BOLDRED << " (If HOD approval on acceptable audition) YES Music" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Mu], ";
+
+            HTMLOUT << "<td style=\"background-color:#D17A00;color:black\"><strong>PENDING Music (HOD)</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Music" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL NUTRITION AND FOOD SCIENCE (Nf)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Nf") != Achoices.end())
+    {                                                     
+        if(HOEC == "B" || HOEC == "A" || HOEC == "A*" || BIOL == "B" || BIOL == "A" || BIOL == "A*" || CHEM == "B" || CHEM == "A" || CHEM == "A*")
+        {
+            std::cout << BOLDGREEN << " YES Nutrition and Food Science" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Nf], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Nutrition and Food Science</strong></td>" << std::endl;
+
+            pupils_Nf++;
+
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Nutrition and Food Science" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Nf], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Nutrition and Food Science</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Nutrition and Food Science" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL PHYSICS (Ph)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ph") != Achoices.end())
+    {                                                           
+        if((PHYS == "A" || PHYS == "A*") && (PHYS == "A" || PHYS == "A*"))
+        {
+            std::cout << BOLDGREEN << " YES Physics" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ph], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Physics</strong></td>" << std::endl;
+
+            pupils_Ph++;
+
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Physics" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ph], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Physics</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Physics" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL PSYCHOLOGY (Ps)                *** check if correct implementation ***
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ps") != Achoices.end())
+    {      
+
+    bool mathA  = (MATH == "A"  || MATH == "A*");
+    bool mathB  = (MATH == "B"  || mathA);
+
+    bool elanA  = (ELAN == "A"  || ELAN == "A*");
+    bool elanB  = (ELAN == "B"  || elanA);
+
+    bool physA  = (PHYS == "A"  || PHYS == "A*");
+    bool physB  = (PHYS == "B"  || physA);
+
+    bool chemA  = (CHEM == "A"  || CHEM == "A*");
+    bool chemB  = (CHEM == "B"  || chemA);
+
+    bool biolA  = (BIOL == "A"  || BIOL == "A*");
+    bool biolB  = (BIOL == "B"  || biolA);
+
+    bool psychPhys = (mathA && elanB && physB) || (mathB && elanA && physB) || (mathB && elanB && physA);
+    bool psychChem = (mathA && elanB && chemB) || (mathB && elanA && chemB) || (mathB && elanB && chemA);
+    bool psychBiol = (mathA && elanB && biolB) || (mathB && elanA && biolB) || (mathB && elanB && biolA);
+
+    bool psychology = psychPhys || psychChem || psychBiol;
+
+        if (psychology)
+        {
+            std::cout << BOLDGREEN << " YES Psychology" << RESET << std::endl;
+
+            ALEVELCHOICES << "[YES Ps], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Psychology</strong></td>" << std::endl;
+
+            pupils_Ps++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Psychology" << RESET << std::endl;
+
+            ALEVELCHOICES << "[NO Ps], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Psychology</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Psychology" << "," << " Must change subject choice.";
+        }
+    }
+
+//  A-LEVEL RELIGIOUS STUDIES (Re)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Re") != Achoices.end())
+    {                                                           
+        if(RELI == "B" || RELI == "A" || RELI == "A*" || ELAN == "B" || ELAN == "A" || ELAN == "A*" || HIST == "B" || HIST == "A" || HIST == "A*") 
+        {
+            std::cout << BOLDGREEN << " YES Religious Studies" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Re], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Religious Studies</strong></td>" << std::endl;
+
+            pupils_Re++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Religious Studies" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Re], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Religious Studies</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Religious Studies" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL RUSSIAN (Ru)               ******************NUMBER POSIBILITIES
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Ru") != Achoices.end())
+    {           
+        // Minimum 6 which is a B !                                                
+        if(RUSS == "B" || RUSS == "A" || RUSS == "A*") 
+        {
+            std::cout << BOLDGREEN << " YES Russian" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Ru], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Russian</strong></td>" << std::endl;
+
+            pupils_Ru++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Russian" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Ru], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Russian</strong></td>" << std::endl;
+
+
+            ACTIONS << surname << "," << name << ", NO Russian" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL SPANISH (Sp)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Sp") != Achoices.end())
+    {                                                           
+        if(SPAN == "B" || SPAN == "A" || SPAN == "A*") 
+        {
+            std::cout << BOLDGREEN << " YES Spanish" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Sp], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Spanish</strong></td>" << std::endl;
+
+            pupils_Sp++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Spanish" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Sp], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Spanish</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Spanish" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL SPORT/B-TECH (Pe)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Pe") != Achoices.end())
+    {                                                           
+        if((ELAN == "C*" || ELAN == "B" || ELAN == "A"|| ELAN == "A*") && (MATH == "C*" || MATH == "B" || MATH == "A"|| MATH == "A*")) 
+        {
+            std::cout << BOLDGREEN << " YES Sport" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Pe], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Sport</strong></td>" << std::endl;
+
+            pupils_Pe++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Sport" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Pe], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Sport</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Sport" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL TECHNOLOGY AND DESIGN (Tl)  to what gcse corresponds for a B????? is dtec??????
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Tl") != Achoices.end())
+    {                                                           
+        if(DTEC == "C*" || MATH == "B" || MATH == "A"|| MATH == "A*" || PHYS == "B" || PHYS == "A"|| PHYS == "A*") 
+        {
+            std::cout << BOLDGREEN << " YES Technology and Design" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Tl], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Technology and Design</strong></td>" << std::endl;
+
+            pupils_Tl++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Technology and Design" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Tl], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Technology and Design</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Technology and Design" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+//  A-LEVEL TRAVEL AND TOURISM (Tt)
+
+    if (std::find(Achoices.begin(), Achoices.end(), "Tt") != Achoices.end())
+    {                                                           
+        if((ELAN == "C*" || ELAN == "B" || ELAN == "A"|| ELAN == "A*" || ELAN == "B" || ELAN == "A"|| ELAN == "A*") && (MATH == "C*" || MATH == "B" || MATH == "A"|| MATH == "A*" || PHYS == "B" || PHYS == "A"|| PHYS == "A*")) 
+        {
+            std::cout << BOLDGREEN << " YES Travel and Tourism" << RESET << endl ;
+
+            ALEVELCHOICES << "[YES Tt], ";
+
+            HTMLOUT << "<td style=\"background-color:#00B500;color:#00300B;\"><strong>YES Travel and Tourism</strong></td>" << std::endl;
+
+            pupils_Tt++;
+        }
+        else
+        {
+            std::cout << BOLDRED << " NO Travel and Tourism" << RESET << endl ;
+
+            ALEVELCHOICES << "[NO Tt], ";
+
+            HTMLOUT << "<td style=\"background-color:#B31700;color:white\"><strong>NO Travel and Tourism</strong></td>" << std::endl;
+
+            ACTIONS << surname << "," << name << ", NO Travel and Tourism" << "," << " Must change subject choice." << endl;
+        }
+    }
+
+    ALEVELCHOICES << endl; // Go to next line to output info for next student
+    ACTIONS << endl;
+
+} // While reading line finish here
+
+InputFile.close() ;
+
+// FINISH HTML:
+HTMLOUT << "</table>" << std::endl;
+HTMLOUT << "</body>" << std::endl;
+HTMLOUT << "</html>" << std::endl;
+
+// PROVISIONAL NUMBER OF PUPILS:
+NUMBERPUPILS << "Provisional number of pupils per A level subject:" << endl;
+NUMBERPUPILS << pupils_Ar <<" Art and design" << endl;
+NUMBERPUPILS << pupils_Bi <<" Biology" << endl;
+NUMBERPUPILS << pupils_Bs <<" Business Studies" << endl;
+
+NUMBERPUPILS << pupils_Ch <<" Chemistry" << endl;
+NUMBERPUPILS << pupils_Cl <<" Classical Civilization" << endl;
+
+NUMBERPUPILS << pupils_Cp <<" Computer Science" << endl;
+NUMBERPUPILS << pupils_Dt <<" Digital Technology" << endl;
+NUMBERPUPILS << pupils_Dr <<" Drama" << endl;
+NUMBERPUPILS << pupils_Ec <<" Economics" << endl;
+
+NUMBERPUPILS << pupils_Et <<" English Literature" << endl;
+NUMBERPUPILS << pupils_Ev <<" Enviromental Science" << endl;
+
+NUMBERPUPILS << pupils_Fr <<" French" << endl;
+
+NUMBERPUPILS << pupils_Gg <<" Geography" << endl;
+NUMBERPUPILS << pupils_Gr <<" German" << endl;
+
+NUMBERPUPILS << pupils_Po <<" Goverment and Politics" << endl;
+NUMBERPUPILS << pupils_Hs <<" Health and Social Care" << endl;
+NUMBERPUPILS << pupils_Hi <<" History" << endl;
+
+NUMBERPUPILS << pupils_La <<" Latin" << endl;
+NUMBERPUPILS << pupils_Ma <<" Mathematics" << endl;
+NUMBERPUPILS << pupils_Fm <<" Further Mathematics" << endl;
+
+NUMBERPUPILS << pupils_Mv <<" Business Studies" << endl;
+NUMBERPUPILS << pupils_Mu <<" Music" << endl;
+NUMBERPUPILS << pupils_Nf <<" Nutrition amd Food Science" << endl;
+
+
+NUMBERPUPILS << pupils_Ph <<" Physics" << endl;
+NUMBERPUPILS << pupils_Ps <<" Psychology" << endl;
+NUMBERPUPILS << pupils_Re <<" Religious Studies" << endl;
+
+NUMBERPUPILS << pupils_Ru <<" Russian" << endl;
+NUMBERPUPILS << pupils_Sp <<" Spanish" << endl;
+NUMBERPUPILS << pupils_Pe <<" Sport" << endl;
+
+NUMBERPUPILS << pupils_Tl <<" Technology and Design" << endl;
+NUMBERPUPILS << pupils_Tt <<" Travel and tourism" << endl;
+
+return (0) ;
+
+}
